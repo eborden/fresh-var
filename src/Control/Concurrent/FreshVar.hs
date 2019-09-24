@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
--- | A 'FreshVar' is a shared readable values that always remain fresh. One can
+-- | A 'FreshVar' is a shared readable value that always remain fresh. One can
 -- be created and read simply by providing a stale check and a create/refresh
 -- action.
 --

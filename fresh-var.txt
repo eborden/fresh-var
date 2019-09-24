@@ -9,9 +9,9 @@
 @version 0.0.0.0
 
 
--- | A <a>FreshVar</a> is a shared readable values that always remain
---   fresh. One can be created and read simply by providing a stale check
---   and a create/refresh action.
+-- | A <a>FreshVar</a> is a shared readable value that always remain fresh.
+--   One can be created and read simply by providing a stale check and a
+--   create/refresh action.
 --   
 --   <pre>
 --   &gt;&gt;&gt; var &lt;- newFreshVar alwaysFresh onRefreshFalse

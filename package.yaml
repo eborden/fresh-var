@@ -1,0 +1,43 @@
+name:                fresh-var
+version:             0.0.0.0
+github:              "eborden/fresh"
+license:             BSD3
+author:              "Evan Rutledge Borden"
+maintainer:          "evan@evan-borden.com"
+copyright:           "2019 Evan Rutledge Borden"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            Shared values that are always fresh.
+category:            Data, Concurrent
+description:         Shared values that are always fresh.
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+tests:
+  spec:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - fresh-var
+    - hspec
+  doctest:
+    main:                Main.hs
+    source-dirs:         doctest
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - fresh-var
+    - doctest

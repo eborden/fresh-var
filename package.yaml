@@ -11,7 +11,7 @@ extra-source-files:
 - ChangeLog.md
 
 synopsis:            Shared values that are always fresh.
-category:            Data, Concurrent
+category:            data, concurrency
 description:         Shared values that are always fresh.
 
 dependencies:

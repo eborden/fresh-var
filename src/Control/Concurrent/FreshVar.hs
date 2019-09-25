@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
@@ -36,10 +35,10 @@ module Control.Concurrent.FreshVar
 where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.MVar (MVar, modifyMVar, newMVar, putMVar, readMVar, tryTakeMVar, withMVar)
-import Control.Exception (bracket)
+import Control.Concurrent.MVar (MVar, modifyMVar, newMVar, putMVar, takeMVar, tryTakeMVar, withMVar)
+import Control.Exception (bracket, finally, mask_)
 import Control.Monad (void)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_)
 
 -- $setup
 -- >>> let alwaysFresh = const False
@@ -106,11 +105,7 @@ syncRefresh t = withMVar (refreshMutex t) (const $ refresh t)
 
 -- | Attempt to refresh a value, but do nothing if another thread is already refreshing
 tryRefresh :: FreshVar a -> IO ()
-tryRefresh v = do
-  t <- readFreshVar' v
-  void . tryWithMutex t $ do
-    newT <- refresh t
-    modifyFreshVar v . const $ pure newT
+tryRefresh v = tryWithMutex v . void $ modifyFreshVar v refresh
 
 refresh :: Fresh a -> IO (Fresh a)
 refresh t = do
@@ -118,18 +113,20 @@ refresh t = do
   pure $ t { getFresh = x }
 
 -- | Attempt to lock mutation on a 'Fresh'
-tryWithMutex :: Fresh a -> IO b -> IO (Maybe b)
-tryWithMutex t f = with $ \case
-  Nothing -> pure Nothing -- do nothing when we don't have a lock
-  Just () -> Just <$> f -- run the action when we've taken the lock
+tryWithMutex :: FreshVar a -> IO () -> IO ()
+tryWithMutex v f = mask_ $ do
+  (mutexVar, mayMutex) <- bracket takeMutex putFresh unwrapMutex
+  for_ mayMutex $ \() -> f `finally` putMVar mutexVar ()
  where
-  mutex = refreshMutex t
-  -- bracket to prevent indefinitely locking the mutext on exception
-  with = bracket (tryTakeMVar mutex) (traverse_ (putMVar mutex))
+  takeMutex = do
+    fresh <- takeMVar freshMVar
+    let mutexVar = refreshMutex fresh
+    mayMutex <- tryTakeMVar mutexVar
+    pure (fresh, mutexVar, mayMutex)
+  putFresh (fresh, _, _) = putMVar freshMVar fresh
+  unwrapMutex (_, mutexVar, mayMutex) = pure (mutexVar, mayMutex)
+  freshMVar = getFreshMVar v
 
 modifyFreshVar :: FreshVar a -> (Fresh a -> IO (Fresh a)) -> IO (Fresh a)
 modifyFreshVar v f = modifyMVar (getFreshMVar v) $ fmap dup . f
   where dup x = (x, x)
-
-readFreshVar' :: FreshVar a -> IO (Fresh a)
-readFreshVar' = readMVar . getFreshMVar

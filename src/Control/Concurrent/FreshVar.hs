@@ -115,6 +115,19 @@ refresh t = do
   pure $ t { getFresh = x }
 
 -- | Attempt to lock mutation on a 'Fresh'
+--
+-- This function has some complexity. It needs to follow a careful
+-- corriographed sequence of events to avoid deadlocks and race conditions.
+--
+-- 1. It takes the 'FreshVar'
+-- 2. It tries to take the mutex
+-- 3. It puts the 'FreshVar'
+-- 4. It runs the action
+-- 5. It puts the mutex
+--
+-- These actions are all masked and caught in various forms to prevent leaving
+-- one of the `MVar`s in a taken state.
+--
 tryWithMutex :: FreshVar a -> IO () -> IO ()
 tryWithMutex v f = mask $ \unmask -> do
   (mutexVar, mayMutex) <- bracket takeMutex putFresh unwrapMutex

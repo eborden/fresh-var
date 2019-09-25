@@ -22,6 +22,7 @@
 -- >>> import Control.Concurrent (threadDelay)
 -- >>>
 -- >>> var <- newPreemptiveFreshVar alwaysFresh alwaysStale onRefreshFalse
+-- >>> readFreshVar var -- True
 -- >>> threadDelay 1
 -- >>> readFreshVar var
 -- False

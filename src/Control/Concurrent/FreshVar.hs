@@ -36,9 +36,8 @@ where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (MVar, modifyMVar, newMVar, putMVar, takeMVar, tryTakeMVar, withMVar)
-import Control.Exception (bracket, finally, mask_)
+import Control.Exception (bracket, finally, mask)
 import Control.Monad (void)
-import Data.Foldable (for_)
 
 -- $setup
 -- >>> let alwaysFresh = const $ pure False
@@ -117,9 +116,11 @@ refresh t = do
 
 -- | Attempt to lock mutation on a 'Fresh'
 tryWithMutex :: FreshVar a -> IO () -> IO ()
-tryWithMutex v f = mask_ $ do
+tryWithMutex v f = mask $ \unmask -> do
   (mutexVar, mayMutex) <- bracket takeMutex putFresh unwrapMutex
-  for_ mayMutex $ \() -> f `finally` putMVar mutexVar ()
+  case mayMutex of
+    Nothing -> unmask $ pure ()
+    Just () -> unmask f `finally` putMVar mutexVar ()
  where
   takeMutex = do
     fresh <- takeMVar freshMVar

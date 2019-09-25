@@ -68,4 +68,4 @@ newFreshVar :: (a -> IO Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
 newPreemptiveFreshVar :: (a -> IO Bool) -> (a -> IO Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
 
 -- | Read a value and ensure it is always fresh
-readFreshVar :: Show a => FreshVar a -> IO a
+readFreshVar :: FreshVar a -> IO a

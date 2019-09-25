@@ -31,7 +31,7 @@ spec = describe "readFreshVar" $ do
 
   it "only refreshes once without blocking reads" $ do
     count <- newIORef (0 :: Int)
-    var <- newPreemptiveFreshVar alwaysFresh id $ \case
+    var <- newPreemptiveFreshVar alwaysFresh pure $ \case
       Nothing -> pure True
       Just _ -> do
         atomicModifyIORef count $ \x -> (x + 1, ())
@@ -45,11 +45,11 @@ spec = describe "readFreshVar" $ do
     threadDelay 20
     readIORef count `shouldReturn` 2
 
-alwaysFresh :: a -> Bool
-alwaysFresh = const False
+alwaysFresh :: a -> IO Bool
+alwaysFresh = const $ pure False
 
-alwaysStale :: a -> Bool
-alwaysStale = const True
+alwaysStale :: a -> IO Bool
+alwaysStale = const $ pure True
 
 onRefreshFalse :: Applicative f => Maybe a -> f Bool
 onRefreshFalse = \case

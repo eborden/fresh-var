@@ -42,8 +42,8 @@ import Control.Monad (void)
 import Data.Foldable (for_)
 
 -- $setup
--- >>> let alwaysFresh = const False
--- >>> let alwaysStale = const True
+-- >>> let alwaysFresh = const $ pure False
+-- >>> let alwaysStale = const $ pure True
 -- >>> let onRefreshFalse = pure . maybe True (const False)
 
 -- | A value that is always fresh
@@ -52,8 +52,8 @@ newtype FreshVar a = FreshVar { getFreshMVar :: MVar (Fresh a) }
 data Fresh a = Fresh
   { getFresh :: a
   , refreshMutex :: MVar ()
-  , isNearingStale :: a -> Bool
-  , isStale :: a -> Bool
+  , isNearingStale :: a -> IO Bool
+  , isStale :: a -> IO Bool
   , create :: Maybe a -> IO a
   }
 
@@ -64,10 +64,10 @@ data Fresh a = Fresh
 -- 'readFreshVar'.
 --
 newFreshVar
-  :: (a -> Bool) -- ^ A check to determine if the value is stale
+  :: (a -> IO Bool) -- ^ A check to determine if the value is stale
   -> (Maybe a -> IO a) -- ^ A procedure to create or refresh the value
   -> IO (FreshVar a)
-newFreshVar staleCheck = newPreemptiveFreshVar staleCheck (const False)
+newFreshVar staleCheck = newPreemptiveFreshVar staleCheck (const $ pure False)
 
 -- | Create a 'FreshVar' that preemptively refreshes itself
 --
@@ -76,8 +76,8 @@ newFreshVar staleCheck = newPreemptiveFreshVar staleCheck (const False)
 -- and prevent blocking reads.
 --
 newPreemptiveFreshVar
-  :: (a -> Bool) -- ^ A check to determine if the value is stale
-  -> (a -> Bool) -- ^ A check to determine if that value is nearing stale
+  :: (a -> IO Bool) -- ^ A check to determine if the value is stale
+  -> (a -> IO Bool) -- ^ A check to determine if that value is nearing stale
   -> (Maybe a -> IO a) -- ^ A procedure to create or refresh the value
   -> IO (FreshVar a)
 newPreemptiveFreshVar isStale isNearingStale create = do
@@ -93,12 +93,15 @@ newPreemptiveFreshVar isStale isNearingStale create = do
 
 -- | Read a value and ensure it is always fresh
 readFreshVar :: Show a => FreshVar a -> IO a
-readFreshVar v = fmap getFresh $ modifyFreshVar v $ \fresh -> if
-  | isNearingStale fresh $ getFresh fresh -> do
-    void . forkIO $ tryRefresh v
-    pure fresh
-  | isStale fresh $ getFresh fresh -> syncRefresh fresh
-  | otherwise -> pure fresh
+readFreshVar v = fmap getFresh $ modifyFreshVar v $ \fresh -> do
+  nearStale <- isNearingStale fresh $ getFresh fresh
+  if nearStale
+    then do
+      void . forkIO $ tryRefresh v
+      pure fresh
+    else do
+      stale <- isStale fresh $ getFresh fresh
+      if stale then syncRefresh fresh else pure fresh
 
 -- | Refresh a value and block if the mutex is held by another thread
 syncRefresh :: Fresh a -> IO (Fresh a)

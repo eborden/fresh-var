@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 -- | A 'FreshVar' is a shared readable value that always remains fresh. One can
@@ -92,7 +91,7 @@ newPreemptiveFreshVar isStale isNearingStale create = do
     }
 
 -- | Read a value and ensure it is always fresh
-readFreshVar :: Show a => FreshVar a -> IO a
+readFreshVar :: FreshVar a -> IO a
 readFreshVar v = fmap getFresh $ modifyFreshVar v $ \fresh -> do
   nearStale <- isNearingStale fresh $ getFresh fresh
   if nearStale

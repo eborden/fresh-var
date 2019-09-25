@@ -41,6 +41,8 @@
 --   
 --   &gt;&gt;&gt; var &lt;- newPreemptiveFreshVar alwaysFresh alwaysStale onRefreshFalse
 --   
+--   &gt;&gt;&gt; readFreshVar var -- True
+--   
 --   &gt;&gt;&gt; threadDelay 1
 --   
 --   &gt;&gt;&gt; readFreshVar var
@@ -56,14 +58,14 @@ data FreshVar a
 --   A <a>FreshVar</a> will refresh itself when its stale check returns
 --   <a>True</a>. These refreshes are done lazily and occur when a stale
 --   value is read via <a>readFreshVar</a>.
-newFreshVar :: (a -> Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
+newFreshVar :: (a -> IO Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
 
 -- | Create a <a>FreshVar</a> that preemptively refreshes itself
 --   
 --   A <a>FreshVar</a> will block reads when the value becomes stale.
 --   However a preemptive <a>FreshVar</a> can refresh itself before the
 --   value becomes stale and prevent blocking reads.
-newPreemptiveFreshVar :: (a -> Bool) -> (a -> Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
+newPreemptiveFreshVar :: (a -> IO Bool) -> (a -> IO Bool) -> (Maybe a -> IO a) -> IO (FreshVar a)
 
 -- | Read a value and ensure it is always fresh
 readFreshVar :: Show a => FreshVar a -> IO a

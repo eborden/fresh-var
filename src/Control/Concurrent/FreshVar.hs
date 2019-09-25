@@ -36,7 +36,7 @@ module Control.Concurrent.FreshVar
 where
 
 import Control.Concurrent (forkIO)
-import Control.Concurrent.MVar (MVar, modifyMVar, newMVar, putMVar, tryTakeMVar, withMVar)
+import Control.Concurrent.MVar (MVar, modifyMVar, newMVar, putMVar, readMVar, tryTakeMVar, withMVar)
 import Control.Exception (bracket)
 import Control.Monad (void)
 import Data.Foldable (traverse_)
@@ -106,7 +106,11 @@ syncRefresh t = withMVar (refreshMutex t) (const $ refresh t)
 
 -- | Attempt to refresh a value, but do nothing if another thread is already refreshing
 tryRefresh :: FreshVar a -> IO ()
-tryRefresh v = void . modifyFreshVar v $ \t -> tryWithMutex t (refresh t)
+tryRefresh v = do
+  t <- readFreshVar' v
+  void . tryWithMutex t $ do
+    newT <- refresh t
+    modifyFreshVar v . const $ pure newT
 
 refresh :: Fresh a -> IO (Fresh a)
 refresh t = do
@@ -114,10 +118,10 @@ refresh t = do
   pure $ t { getFresh = x }
 
 -- | Attempt to lock mutation on a 'Fresh'
-tryWithMutex :: Fresh a -> IO (Fresh a) -> IO (Fresh a)
+tryWithMutex :: Fresh a -> IO b -> IO (Maybe b)
 tryWithMutex t f = with $ \case
-  Nothing -> pure t -- do nothing when we don't have a lock
-  Just () -> f -- run the action when we've taken the lock
+  Nothing -> pure Nothing -- do nothing when we don't have a lock
+  Just () -> Just <$> f -- run the action when we've taken the lock
  where
   mutex = refreshMutex t
   -- bracket to prevent indefinitely locking the mutext on exception
@@ -126,3 +130,6 @@ tryWithMutex t f = with $ \case
 modifyFreshVar :: FreshVar a -> (Fresh a -> IO (Fresh a)) -> IO (Fresh a)
 modifyFreshVar v f = modifyMVar (getFreshMVar v) $ fmap dup . f
   where dup x = (x, x)
+
+readFreshVar' :: FreshVar a -> IO (Fresh a)
+readFreshVar' = readMVar . getFreshMVar
